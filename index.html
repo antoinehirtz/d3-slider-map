@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title></title>
+  <style>
+
+    p{
+      font-size: 10pt;
+    }
+    .countries{
+      fill:#FFF;
+      stroke:#000;
+    }
+  </style>
+</head>
+
+<body>
+  <h2>Number of deaths caused by disasters in 2000</h2>
+  <p><input type="range" min="2000" max="2013" id="year"></p>
+  <svg width="960" height="400"></svg>
+  <p>Slider adapted from: http://www.d3noob.org/2014/04/using-html-inputs-with-d3js.html</p>
+  <p>Data source: http://unstats.un.org/sdgs/indicators/database/?indicator=11.5.1</p>
+
+  <script src="http://d3js.org/d3.v4.min.js"></script>
+  <script src="https://d3js.org/topojson.v2.min.js"></script>
+  <script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
+
+  <script>
+    var path = d3.geoPath(d3.geoEquirectangular());
+    var data = {};
+    var svg = d3.select("svg"),
+        width = svg.attr("width"),
+        height = svg.attr("height");
+
+    var color = d3.scaleThreshold()
+          .domain([1, 50, 250, 500])
+          .range(d3.schemeReds[5]);
+
+    // load data and store it globally
+    d3.json("data/data_sdgs-disaster_proc.json", function(error, d) {
+      if (error) throw error;
+      data = d;
+    });
+
+    // load map data and render it
+    d3.json("data/world.json", function(error, worldmap) {
+      if (error) throw error;
+
+      data_yr = data[2000];
+
+      svg.append("g")
+          .attr("class", "countries")
+        .selectAll("path")
+        .data(topojson.feature(worldmap, worldmap.objects.world).features)
+        .enter().append("path")
+          .attr("d", path)
+          .attr("fill", function(d) { return (typeof data_yr[d.id] === 'undefined' ? '#FFF' : color(data_yr[d.id])); })
+          .attr("id", function(d) { return d.id; })
+        .append("title")
+          .text(function(d) { return "" + d.id + ", " + (typeof data_yr[d.id] === 'undefined' ? 'N/A' : data_yr[d.id]); });
+
+        });
+
+    // was the slider used?
+    d3.select("#year").on("input", function() {
+      updateMap(this.value);
+    });
+
+    function updateMap(year) {
+
+        data_upd = data[year];
+
+        // refill paths
+        var fill = d3.selectAll("svg path").transition()
+          .delay(500)
+          .attr("fill", "#FFF")
+          .attr("fill", function(d) { return (typeof data_upd[d.id] === 'undefined' ? '#FFF' : color(data_upd[d.id])); });
+
+        // update title
+        d3.selectAll("svg path title")
+          .text(function(d) { return "" + d.id + ", " + (typeof data_upd[d.id] === 'undefined' ? 'N/A' : data_upd[d.id]); });
+
+        // change headline
+        d3.select("h2").text("Number of deaths caused by disasters in " + year);
+    }
+
+</script>
+</body>
+
+</html>
