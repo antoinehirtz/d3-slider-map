@@ -40,11 +40,12 @@ df = pd.merge(df, df_mapping,
 columns.insert(2, 'alpha-3')
 df = df[columns]
 
-# melt dataframe and group by year
+# melt dataframe, convert to int and group by year
 dfg = pd.melt(df, id_vars=['alpha-3'], value_vars=years, var_name="year") \
             .dropna() \
-            .sort_values(by=["alpha-3", "year"]) \
-            .groupby("year")
+            .sort_values(by=["alpha-3", "year"])
+dfg['value'] = dfg['value'].apply(lambda x: int(float(x.replace(',', ''))))
+dfg = dfg.groupby('year')
 
 # store data in a dict to create a suitable json string
 dict_json = {}
@@ -52,6 +53,8 @@ for k,v in dfg:
     v.index=v['alpha-3']
     v = v['value'].to_dict()
     dict_json[k] = v
+
+print dict_json
 
 with open(fname_out, 'w') as f:
     f.write(json.dumps(dict_json))
