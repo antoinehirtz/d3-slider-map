@@ -7,10 +7,17 @@
   <title></title>
   <style>
 
+    body{
+      font-family: 'Lato',sans-serif;
+    }
+
     p{
       font-size: 10pt;
     }
     .countries{
+      stroke:#000;
+    }
+    .legend rect{
       stroke:#000;
     }
   </style>
@@ -30,6 +37,11 @@
 
   <script>
 
+    // params
+    var color_na = "#E7E7E7";
+    // only works if array.length-1 is between 3 and 9 (d3 color scheme)
+    var quantiles = [0, 0.2, 0.4, 0.6, 0.8, 1];
+
     // load data and store it globally
     var data = {};
     d3.json("data/data_sdgs-disaster_proc.json", function(error, d) {
@@ -37,84 +49,91 @@
       data = d;
     });
 
-    var path = d3.geoPath(d3.geoRobinson());
+    // init map container & projection
     var svg = d3.select("svg"),
         width = svg.attr("width"),
         height = svg.attr("height");
+    var path = d3.geoPath(d3.geoRobinson());
 
+    // init legend container
+    svg.append("g")
+        .attr("class", "legend");
+    d3.select("svg")
+      .append("g")
+        .attr("class", "legend_title")
+      .append("text")
+        .text("Legend (quintile ranges)")
+        .attr("y", 290);
 
     // load map data and render it
     d3.json("data/world.json", function(error, worldmap) {
       if (error) throw error;
 
+      // calculate color scale, calculate legend
+      color = getColorScale(2000);
+      drawLegend(color);
+
+      // init map
       svg.append("g")
           .attr("class", "countries")
         .selectAll("path")
         .data(topojson.feature(worldmap, worldmap.objects.world).features)
         .enter().append("path")
           .attr("d", path)
+          .attr("fill", function(d) { return (typeof data[2000][d.id] === 'undefined' ? color_na : color(data[2000][d.id])); })
           .attr("id", function(d) { return d.id; })
-        .append("title");
-
-      // set up legend and color the map
-      d3.select("svg")
-        .append("g")
-          .attr("class", "legend");
-      d3.select("svg")
-        .append("g")
-          .attr("class", "legend_title")
-        .append("text")
-          .text("Legend (quintile ranges)")
-          .attr("y", 290);
-
-      fillMap(2000);
-
+        .append("title")
+          .text(function(d) { return "" + d.id + ", " + (typeof data[2000][d.id] === 'undefined' ? 'N/A' : data[2000][d.id]); });
     });
 
     // was the slider used?
     d3.select("#year").on("input", function() {
-
-        fillMap(this.value);
+        updateMap(this.value);
     });
 
-    function fillMap(year) {
+    function updateMap(year) {
 
-        let data_upd = data[year];
-        // get values, turn to int and sort
+        let data_year = data[year];
 
-        let data_values = Object.values(data[year]).map(Number).sort(function(a, b){return a-b});
-        let color_na = "#E7E7E7";
-        let quantiles = [0, 0.2, 0.4, 0.6, 0.8, 1];
-
-        quintiles = quantiles.map( function(elem) {
-          return Math.ceil(d3.quantile(data_values, elem));
-        });
-
-        let color = d3.scaleQuantile()
-                  .domain(quintiles)
-                  .range(d3.schemeReds[5]);
-
+        // update scale and legend
+        color = getColorScale(year);
         drawLegend(color);
 
-        // fill paths
+        // update path fill attributes
         var fill = d3.selectAll("svg path").transition()
           .delay(500)
           .attr("fill", "#FFF")
-          .attr("fill", function(d) { return (typeof data_upd[d.id] === 'undefined' ? color_na : color(data_upd[d.id])); });
+          .attr("fill", function(d) { return (typeof data_year[d.id] === 'undefined' ? color_na : color(data_year[d.id])); });
 
-        // set path titles
+        // update path titles
         d3.selectAll("svg path title")
-          .text(function(d) { return "" + d.id + ", " + (typeof data_upd[d.id] === 'undefined' ? 'N/A' : data_upd[d.id]); });
+          .text(function(d) { return "" + d.id + ", " + (typeof data_year[d.id] === 'undefined' ? 'N/A' : data_year[d.id]); });
 
-        // set headline
+        // update headline
         d3.select("h2").text("Number of deaths caused by disasters in " + year);
+    }
+
+    function getColorScale(year) {
+
+      // get values, turn to int and sort
+      let data_values = Object.values(data[year]).sort(function(a, b){return a-b});
+
+      quantiles_calc = quantiles.map( function(elem) {
+        return Math.ceil(d3.quantile(data_values, elem));
+      });
+
+      let scale = d3.scaleQuantile()
+                .domain(quantiles_calc)
+                .range(d3.schemeReds[(quantiles_calc.length)-1]);
+
+      return scale;
     }
 
     function drawLegend(scale) {
 
       let legend = d3.select("svg g.legend");
       let svg_height = +d3.select("svg").attr("height");
-      let legend_items = pair(scale.domain())
+      let legend_items = pairQuantiles(scale.domain());
 
       legend.selectAll("rect")
         .data(scale.range())
@@ -134,9 +153,12 @@
     }
 
     // helper function, pairs neighboring elements in array
-    function pair(arr) {
+    function pairQuantiles(arr) {
       new_arr = [];
       for (let i=0; i<arr.length-1; i++) {
+
+        // allow for closed intervals (depends on d3.scaleQuantile)
+        // assumes that neighboring elements are equal
         if(i == arr.length-2) {
           new_arr.push(arr[i] + " - " +  arr[i+1]);
         }
@@ -146,8 +168,6 @@
       }
       return new_arr;
     }
-
-</script>
+  </script>
 </body>
-
 </html>
