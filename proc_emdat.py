@@ -25,7 +25,7 @@ for k,v in dfg:
         print k
         v.index = v['iso']
         dict_json['Storm'][k] = v['deaths'].to_dict()
-
+        
 with open(fname_out, 'w') as f:
     f.write(json.dumps(dict_json))
 

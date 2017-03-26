@@ -1,7 +1,7 @@
 A d3.js map showing number of deaths caused by storms from 1990 to 2016 using the [EM-DAT][] database
 
 * check out the demo at [bl.ocks.org][]
-* the data was processed using proc_data.py
+* the data was processed using proc_emdat.py
 * map file from [naturalearthdata.com][] and edited using [mapshaper.org][]
 
 Data source: [EM-DAT][], Center for Research on the Epidemiology of Disasters (CRED)
